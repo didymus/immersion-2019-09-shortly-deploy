@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "scripts": {
+    "test": "grunt build && mocha --exit ../test/index.test.js"
+  },
+  "testDirs": ["test"]
+}

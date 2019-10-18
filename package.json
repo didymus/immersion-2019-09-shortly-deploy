@@ -1,0 +1,45 @@
+{
+  "name": "shortly-deploy",
+  "version": "1.0.0",
+  "description": "Learn all about (the challenges of) deployment",
+  "author": "Hack Reactor <curriculum.team@hackreactor.com>",
+  "license": "UNLICENSED",
+  "private": true,
+  "engines": {
+    "node": ">=8.0.0"
+  },
+  "scripts": {
+    "start": "grunt build && grunt upload",
+    "test": "grunt test",
+    "lint": "eslint ./"
+  },
+  "dependencies": {
+    "axios": "^0.18.0",
+    "bcrypt-nodejs": "0.0.3",
+    "body-parser": "^1.18.3",
+    "ejs": "^2.4.1",
+    "express": "^4.13.4",
+    "express-partials": "^0.2.0",
+    "lodash": "^4.17.11",
+    "mongoose": "^5.4.20",
+    "mysql": "^2.16.0",
+    "promise-mysql": "^3.3.2",
+    "tough-cookie": "^3.0.1"
+  },
+  "devDependencies": {
+    "axios-cookiejar-support": "^0.4.2",
+    "chai": "^4.2.0",
+    "eslint-config-hackreactor": "git://github.com/reactorcore/eslint-config-hackreactor.git",
+    "grunt": "^1.0.4",
+    "grunt-contrib-concat": "^1.0.0",
+    "grunt-contrib-cssmin": "^3.0.0",
+    "grunt-contrib-uglify": "^1.0.1",
+    "grunt-contrib-watch": "^1.0.0",
+    "grunt-eslint": "^21.0.0",
+    "grunt-mocha-test": "^0.13.3",
+    "grunt-nodemon": "^0.4.1",
+    "grunt-shell": "^1.2.1",
+    "mocha": "^5.2.0",
+    "supertest": "^4.0.2"
+  }
+}
