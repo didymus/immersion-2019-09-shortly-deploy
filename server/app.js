@@ -1,11 +1,11 @@
 const express = require('express');
+const path = require('path');
 const partials = require('express-partials');
 const bodyParser = require('body-parser');
-const path = require('path');
 
-const cookieParser = require('./middleware/cookieParser');
+const { Users, Sessions, Links, Clicks } = require('./models');
 const { createSession, verifySession } = require('./middleware/auth');
-const { Link, Session, Click, User } = require('./models');
+const cookieParser = require('./middleware/cookieParser');
 
 const app = express();
 
@@ -16,19 +16,20 @@ app.use(partials());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '../public')));
-app.use(cookieParser);
-app.use(createSession);
+app.use('/__docs', express.static(path.join(__dirname, '../docs')));
 
-app.get('/', verifySession, (req, res) => {
+
+app.get('/', cookieParser, createSession, verifySession, (req, res) => {
+  // if current session not attached to a user redirect to login
   res.render('index');
 });
 
-app.get('/create', verifySession, (req, res) => {
+app.get('/create', cookieParser, createSession, verifySession, (req, res) => {
   res.render('index');
 });
 
-app.get('/links', verifySession, (req, res) => {
-  Link.getAll()
+app.get('/links', cookieParser, createSession, verifySession, (req, res, next) => {
+  Links.getAll()
     .then((links) => {
       res.status(200).send(links);
     })
@@ -38,27 +39,27 @@ app.get('/links', verifySession, (req, res) => {
     });
 });
 
-app.post('/links', verifySession, (req, res) => {
+app.post('/links', (req, res, next) => {
   const { url } = req.body;
 
-  if (!Link.isValidUrl(url)) {
+  if (!Links.isValidUrl(url)) {
     // send back a 404 if link is not valid
     return res.sendStatus(404);
   }
 
-  return Link.get({ url })
+  return Links.get({ url })
     .then((link) => {
       if (link) {
         return link;
       }
 
-      return Link.getUrlTitle(url)
-        .then(title => Link.create({
+      return Links.getUrlTitle(url)
+        .then(title => Links.create({
           url,
           title,
           baseUrl: req.headers.origin,
         }))
-        .then(queryResponse => Link.get({ id: queryResponse.insertId }));
+        .then(queryResponse => Links.get({ id: queryResponse.insertId }));
     })
     .then((link) => {
       return res.status(200).send(link);
@@ -73,70 +74,73 @@ app.post('/links', verifySession, (req, res) => {
 // Write your authentication routes here
 /************************************************************/
 
-app.get('/login', (req, res) => {
-  res.render('login');
-});
-
-app.post('/login', (req, res) => {
-  const { username, password } = req.body;
-  const { hash } = req.session;
-
-  return User.get({ username })
-    .then((user) => {
-      if (!user || !User.compare(password, user.password, user.salt)) {
-        // user doesn't exist or the password doesn't match
-        return res.redirect('/login');
-      }
-
-      return Session.update({ hash }, { userId: user.id })
-        .then(() => res.redirect('/'));
-    })
-    .catch((error) => {
-      console.error('Failed to login', error);
-      res.sendStatus(500);
-    });
-});
-
-app.get('/logout', (req, res) => {
-  const hash = req.cookies.shortlyid;
-
-  return Session.delete({ hash })
-    .then(() => {
-      res.clearCookie('shortlyid');
-      res.redirect('/login');
-    })
-    .catch((error) => {
-      console.error('Failed to logout', error);
-      res.sendStatus(500);
-    });
-});
-
-app.get('/signup', (req, res) => {
+app.get('/signup', cookieParser, (req, res) => {
   res.render('signup');
 });
 
-app.post('/signup', (req, res) => {
-  const { username, password } = req.body;
-  const { hash } = req.session;
-
-  return User.get({ username })
-    .then((user) => {
-      if (user) {
-        // user already exists; redirect
-        return res.redirect('/signup');
-      }
-
-      return User.create({ username, password })
-        .then(queryResponse => Session.update(
-          { hash },
-          { userId: queryResponse.insertId },
-        ))
-        .then(() => res.redirect('/'));
+app.post('/signup', cookieParser, createSession, (req, res) => {
+  // register user for a new account
+  const username = req.body.username;
+  const password = req.body.password;
+  Users.create({
+    username,
+    password,
+  })
+    .then((userData) => {
+      // update current session to include user id
+      Sessions.update({
+        hash: req.session.hash,
+      }, {
+        userId: userData.insertId,
+      })
+        .then((updateData) => {
+          // then redirect to '/'
+          res.setHeader('Location', '/');
+          res.render('index');
+        });
     })
-    .catch((error) => {
-      console.error('Failed to signup', error);
-      res.sendStatus(500);
+    .catch(() => {
+      // if user is already signed up redirect back to '/signup'
+      res.setHeader('Location', '/signup');
+      res.render('signup'); // FIXME: possible fix later on to redirect to login instead
     });
+
+});
+
+app.get('/login', cookieParser, (req, res) => {
+  res.render('login');
+});
+
+app.post('/login', cookieParser, (req, res) => {
+  // compare passed in credentials
+  const username = req.body.username;
+  const attemptedPass = req.body.password;
+  Users.get({
+    username,
+  })
+    .then((userData) => {
+      // check if user data exists and if the passwords pass
+      if (userData && Users.compare(attemptedPass, userData.password, userData.salt)) {
+        // then redirect to '/'
+        res.setHeader('Location', '/');
+        res.render('index');
+      } else {
+        // if user does not exist or incorrect credentials are passed -> redirect to '/login'
+        res.setHeader('Location', '/login');
+        res.render('login');
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+    });
+});
+
+app.get('/logout', cookieParser, (req, res) => {
+  // reassign shortlyid cookie to null
+  res.cookie('shortlyid', null);
+  // delete session from database
+  Sessions.deleteMany({ hash: req.cookies.shortlyid });
+  res.render('login');
 });
 
 /************************************************************/
@@ -148,14 +152,14 @@ app.post('/signup', (req, res) => {
 app.get('/:code', (req, res) => {
   const { code } = req.params;
 
-  return Link.get({ code })
+  return Links.get({ code })
     .then((link) => {
       if (!link) {
         return res.redirect('/');
       }
 
-      return Click.create({ linkId: link.id })
-        .then(() => Link.update(link, { visits: link.visits + 1 }))
+      return Clicks.create({ linkId: link.id })
+        .then(() => Links.update(link, { visits: link.visits + 1 }))
         .then(() => {
           res.redirect(link.url);
         });
