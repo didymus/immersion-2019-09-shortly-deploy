@@ -18,9 +18,9 @@ describe('Shortly', function() {
       axios.get('http://127.0.0.1:8080/logout')
         // Delete objects from db so they can be created later for the test
         .then(() => Promise.all([
-          User.deleteMany({}),
-          Session.deleteMany({}),
-          Link.deleteMany({}),
+          User.deleteAll({}),
+          Session.deleteAll({}),
+          Link.deleteAll({}),
         ]))
         .then(() => done())
         .catch(err => done(err));

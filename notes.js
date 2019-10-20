@@ -5,6 +5,12 @@ module.exports = (grunt) => {
     concat: {
       options: {
         separator: ';'
+      },
+      dist: {
+        // files to concat
+        src: ['public/client/**/*.js'],
+        // location of resulting JS files
+        dest: 'public/dist/<%= pkg.name %>.js'
       }
     },
 
@@ -41,9 +47,9 @@ module.exports = (grunt) => {
         'Gruntfile.js',
         'app/**/*.js',
         'lib/**/*.js',
+        './*.js',
         'spec/**/*.js'
-
-      ],
+      ]
     },
 
     cssmin: {
@@ -79,7 +85,7 @@ module.exports = (grunt) => {
           stderr: true,
           failOnError: true
         }
-      },
+      }
     },
   });
 
@@ -93,31 +99,43 @@ module.exports = (grunt) => {
   grunt.loadNpmTasks('grunt-nodemon');
 
   grunt.registerTask('server-dev', (target) => {
-    grunt.task.run([ 'nodemon', 'watch' ]);
+    // running nodejes in a different process
+    // displays output to same console
+    const nodemon = grunt.util.spawn({
+      cmd: 'grunt',
+      grunt: true,
+      args: 'nodemon'
+    });
+    nodemon.stdout.pipe(process.stdout);
+    nodemon.stderr.pipe(process.stderr);
+
+    grunt.task.run(['watch']);
   });
 
   ////////////////////////////////////////////////////
   // Main grunt tasks
   ////////////////////////////////////////////////////
 
-  grunt.registerTask('test', [
-    'eslint', 'mochaTest'
-  ]);
-
-  grunt.registerTask('build', [
-    'concat', 'uglify', 'cssmin'
-  ]);
-
   grunt.registerTask('upload', (n) => {
     if (grunt.option('prod')) {
       // add your production server task here
       grunt.task.run(['shell:prodServer']);
     } else {
-      grunt.task.run([ 'server-dev' ]);
+      grunt.task.run(['server-dev']);
     }
   });
 
+  grunt.registerTask('test', [
+    'eslint', 'mochaTest'
+  ]);
+
+  grunt.registerTask('build', ['concat', 'uglify', 'cssmin']);
+
   grunt.registerTask('deploy', [
+    // add your deploy tasks here
     'test', 'build', 'upload'
   ]);
 };
+
+
+
