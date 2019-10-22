@@ -101,15 +101,15 @@ module.exports = (grunt) => {
   grunt.registerTask('server-dev', (target) => {
     // running nodejes in a different process
     // displays output to same console
-    // const nodemon = grunt.util.spawn({
-    //   cmd: 'grunt',
-    //   grunt: true,
-    //   args: 'nodemon'
-    // });
-    // nodemon.stdout.pipe(process.stdout);
-    // nodemon.stderr.pipe(process.stderr);
+    const nodemon = grunt.util.spawn({
+      cmd: 'grunt',
+      grunt: true,
+      args: 'nodemon'
+    });
+    nodemon.stdout.pipe(process.stdout);
+    nodemon.stderr.pipe(process.stderr);
 
-    grunt.task.run(['nodemon', 'watch']);
+    grunt.task.run(['watch']);
   });
 
   ////////////////////////////////////////////////////
@@ -136,3 +136,6 @@ module.exports = (grunt) => {
     'test', 'build', 'upload'
   ]);
 };
+
+
+
